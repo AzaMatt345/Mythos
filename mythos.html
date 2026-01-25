@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Mythos TCG: Warlord</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent-gold: #ffd700;
+            --accent-red: #ff4757;
+            --accent-green: #2ed573;
+            --accent-blue: #1e90ff;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+        html, body {
+            width: 100%; height: 100%; margin: 0; padding: 0;
+            overflow: hidden; /* Prevent body scroll */
+            font-family: 'Lato', sans-serif;
+            color: #fff;
+            background-color: #0f0c29;
+            background-image: url('background.jpg'), linear-gradient(135deg, #0f0c29, #201b45, #151226);
+            background-size: cover; background-position: center; background-repeat: no-repeat;
+        }
+
+        /* --- MENUS --- */
+        .main-menu {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 12, 41, 0.98); z-index: 5000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px;
+        }
+        .game-title { font-family: 'Cinzel', serif; font-size: 3rem; color: var(--accent-gold); text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); text-align: center; line-height: 1; margin-bottom: 20px;}
+        
+        .menu-btn {
+            width: 80%; max-width: 300px; padding: 18px;
+            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.1), transparent);
+            border: 1px solid var(--accent-gold); border-left: none; border-right: none;
+            color: #fff; font-family: 'Cinzel'; font-size: 1.1rem; cursor: pointer; transition: 0.3s;
+        }
+
+        /* --- GOLD BADGE --- */
+        .gold-badge {
+            position: fixed; bottom: 100px; right: 10px; 
+            background: rgba(0,0,0,0.9); border: 2px solid var(--accent-gold);
+            padding: 5px 15px; border-radius: 30px;
+            display: flex; align-items: center; gap: 8px;
+            font-family: 'Cinzel'; color: var(--accent-gold); font-weight: bold; font-size: 1rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 1500;
+        }
+        .coin-icon { width: 16px; height: 16px; background: var(--accent-gold); border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 5px gold; }
+
+        /* --- VIEW CONTAINER --- */
+        .view-container { 
+            width: 100%; height: 100%; position: relative; overflow: hidden; 
+        }
+        /* Increased bottom padding to 180px to clear controls + LP bar */
+        .view { display: none; height: 100%; overflow-y: auto; padding-top: 20px; padding-bottom: 180px; flex-direction: column; align-items: center; }
+        .view.active { display: flex; }
+
+        /* --- SCOREBOARDS --- */
+        .lp-scoreboard {
+            width: 95%; max-width: 450px;
+            background: linear-gradient(90deg, #111, #222, #111);
+            border: 2px solid #444; border-radius: 8px;
+            padding: 10px 20px; margin: 10px 0;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+            position: relative; transition: 0.3s;
+        }
+        .lp-scoreboard.active-turn {
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            transform: scale(1.02);
+        }
+        .lp-label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
+        .lp-val { font-family: 'Cinzel', serif; font-size: 1.8rem; font-weight: 900; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+        /* --- FIELD & CARDS --- */
+        .field-zone {
+            width: 95%; max-width: 450px;
+            background: rgba(0,0,0,0.3); border-radius: 12px; padding: 10px;
+            border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;
+        }
+        .zone-title { 
+            text-align: center; font-family: 'Cinzel'; font-size: 0.9rem; color: #ddd; 
+            margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 2px #000;
+        }
+
+        .card-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .card-slot { aspect-ratio: 2/3; background: rgba(255,255,255,0.05); border: 1px dashed #555; border-radius: 8px; position: relative; }
+
+        .card {
+            width: 100%; height: 100%;
+            background: #151515; border-radius: 8px; border: 1px solid #444;
+            overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6); position: relative;
+            animation: spawn 0.4s ease-out;
+        }
+        @keyframes spawn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .elem-icon { position: absolute; top: 2px; right: 2px; font-size: 1.1rem; z-index: 5; text-shadow: 0 2px 2px rgba(0,0,0,0.9); }
+        .card.can-attack { border: 2px solid var(--accent-green); box-shadow: 0 0 10px var(--accent-green); cursor: pointer; }
+        .card.selected { border: 2px solid var(--accent-gold); transform: translateY(-5px); z-index: 10; box-shadow: 0 0 15px var(--accent-gold); }
+        .card.targetable { border: 2px solid var(--accent-red); cursor: crosshair; box-shadow: 0 0 15px var(--accent-red); }
+        .card.tribute-target { border: 2px dashed #f39c12; animation: pulse 1s infinite; cursor: pointer; filter: brightness(1.2); }
+        .card.dead { filter: grayscale(1) brightness(0.4); opacity: 0.5; transition: 0.5s; }
+        @keyframes pulse { 0% { box-shadow: 0 0 5px #f39c12; } 50% { box-shadow: 0 0 15px #f39c12; } 100% { box-shadow: 0 0 5px #f39c12; } }
+
+        .card-img { width: 100%; height: 55%; object-fit: cover; background: #000; border-bottom: 1px solid #333; }
+        .card-info { flex-grow: 1; background: linear-gradient(180deg, #222 0%, #000 100%); padding: 2px; display: flex; flex-direction: column; justify-content: center; }
+        .c-name { font-size: 0.6rem; color: #eee; text-align: center; white-space: nowrap; overflow: hidden; margin-bottom: 2px; }
+        .c-lvl { font-size: 0.6rem; color: var(--accent-gold); text-align: center; margin-bottom: 2px; font-weight: bold; }
+        .stat-bar { display: flex; justify-content: space-between; padding: 0 4px; font-family: 'Cinzel'; font-weight: bold; font-size: 0.7rem; }
+        .atk { color: #ff6b6b; } .hp { color: #2ecc71; }
+
+        /* --- CONTROLS --- */
+        .battle-dock {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 80px;
+            background: rgba(10,10,20,0.95); border-top: 1px solid #444;
+            display: flex; justify-content: center; align-items: center; gap: 15px; z-index: 1000;
+        }
+        .btn {
+            background: linear-gradient(145deg, #cba35a, #a68b3c); color: #000; border: none;
+            padding: 0 25px; height: 45px; border-radius: 5px; font-family: 'Cinzel'; font-weight: bold;
+            box-shadow: 0 4px 0 #8a7332; transition: 0.1s; cursor: pointer;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+        .btn:disabled { background: #333; color: #555; box-shadow: none; transform: none; cursor: default;}
+        .btn-end { background: linear-gradient(145deg, #e74c3c, #c0392b); color: white; box-shadow: 0 4px 0 #922b21; }
+
+        /* --- MODALS --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); backdrop-filter: blur(5px); z-index: 4000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            width: 90%; max-height: 85vh; overflow-y: auto; background: #1a1a2e;
+            border: 1px solid var(--accent-gold); border-radius: 10px; padding: 20px; text-align: center;
+        }
+        
+        #modal-summon { z-index: 4100; } 
+        #modal-detail { z-index: 4200; } 
+        #modal-gameover { z-index: 5000; }
+
+        .col-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; padding: 10px; }
+        .col-card { opacity: 0.5; position: relative; cursor: pointer; }
+        .col-card.owned { opacity: 1; }
+        .col-card img { width: 100%; border-radius: 5px; border: 1px solid #444; }
+        .col-qty { position: absolute; top: -5px; right: -5px; background: gold; color: black; width: 20px; height: 20px; border-radius: 50%; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+        /* --- IMPROVED DAMAGE VISUALS --- */
+        .dmg-float {
+            position: fixed; /* Fixed ensures it stays on screen regardless of scroll */
+            font-family: 'Cinzel'; font-weight: 900; 
+            text-align: center; pointer-events: none; z-index: 9999;
+            /* Animation slowed down to 2.5s */
+            animation: popUpSlow 2.5s ease-out forwards;
+        }
+        
+        .dmg-val { 
+            font-size: 3rem; color: #fff; 
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        
+        .dmg-text { 
+            font-size: 1.2rem; font-weight: bold;
+            background: rgba(0,0,0,0.8); padding: 4px 10px; border-radius: 4px;
+            margin-top: -10px; display: inline-block; border: 1px solid #555;
+            white-space: nowrap;
+        }
+
+        @keyframes popUpSlow { 
+            0% { opacity: 0; transform: scale(0.5) translateY(0); }
+            15% { opacity: 1; transform: scale(1.2) translateY(-20px); }
+            80% { opacity: 1; transform: scale(1) translateY(-60px); }
+            100% { opacity: 0; transform: scale(1) translateY(-100px); }
+        }
+
+        /* --- DETAILED CARD VIEW --- */
+        .detail-img { width: 180px; height: 260px; object-fit: cover; border-radius: 10px; border: 2px solid #555; box-shadow: 0 0 20px rgba(0,0,0,0.5); margin-bottom: 15px; }
+        .detail-title { font-size: 1.5rem; font-family: 'Cinzel'; color: var(--accent-gold); margin-bottom: 5px; }
+        .detail-desc { font-style: italic; color: #ccc; margin: 15px 0; font-size: 0.9rem; line-height: 1.4; border-top: 1px solid #333; border-bottom: 1px solid #333; padding: 10px 0;}
+        .detail-stats { display: flex; justify-content: space-around; font-size: 1.2rem; font-weight: bold; font-family: 'Cinzel'; margin-bottom: 15px; }
+
+        .help-list { text-align: left; padding: 10px; font-size: 0.9rem; line-height: 1.6; color: #ddd; }
+        .help-list li { margin-bottom: 10px; }
+
+        /* --- GAME OVER --- */
+        .result-title { font-size: 3rem; font-family: 'Cinzel'; font-weight: 900; margin-bottom: 20px; text-shadow: 0 0 20px currentColor; }
+        .win-text { color: var(--accent-green); }
+        .lose-text { color: var(--accent-red); }
+
+    </style>
+</head>
+<body>
+
+    <div id="main-menu" class="main-menu">
+        <div class="game-title">MYTHOS<br>LEGENDS</div>
+        <button class="menu-btn" onclick="ui.startFullscreen(); ui.goToView('arena')">ENTER BATTLE</button>
+        <button class="menu-btn" onclick="ui.startFullscreen(); ui.goToView('collection')">COLLECTION</button>
+        <button class="menu-btn" onclick="ui.startFullscreen(); ui.goToView('shop')">MYSTIC SHOP</button>
+        <button class="menu-btn" onclick="ui.openHelp()">HOW TO PLAY</button>
+        <button class="menu-btn" onclick="ui.startFullscreen()" style="font-size:0.8rem; opacity:0.7;">FULLSCREEN MODE</button>
+    </div>
+
+    <div class="gold-badge" id="gold-badge">
+        <div class="coin-icon"></div>
+        <span id="gold-display">0</span>
+    </div>
+
+    <div class="view-container">
+        <section id="view-arena" class="view">
+            
+            <div class="lp-scoreboard" id="board-enemy">
+                <span class="lp-label">Enemy LP</span>
+                <span class="lp-val" id="lp-enemy">4000</span>
+            </div>
+
+            <div class="field-zone">
+                <div class="zone-title">Opponent Field</div>
+                <div class="card-row" id="row-enemy"></div>
+            </div>
+            
+            <div style="flex-grow:1; min-height: 20px;"></div>
+
+            <div class="field-zone">
+                <div class="zone-title">Your Field</div>
+                <div class="card-row" id="row-player"></div>
+            </div>
+
+            <div class="lp-scoreboard" id="board-player">
+                <span class="lp-label">Player LP</span>
+                <span class="lp-val" id="lp-player">4000</span>
+            </div>
+
+            <div class="battle-dock">
+                <button class="btn" id="btn-summon" onclick="game.openSummon()">SUMMON</button>
+                <button class="btn btn-end" id="btn-end" onclick="game.endTurn()">END TURN</button>
+            </div>
+        </section>
+
+        <section id="view-collection" class="view">
+            <h2 style="font-family:'Cinzel'; margin-top:20px;">Card Compendium</h2>
+            <div class="col-grid" id="collection-content"></div>
+            <button class="btn" style="margin:20px;" onclick="ui.showMenu()">Back to Menu</button>
+        </section>
+
+        <section id="view-shop" class="view">
+            <h2 style="font-family:'Cinzel'; margin-top:20px; color:gold;">Mystic Shop</h2>
+            <div style="text-align:center; margin-top:50px;">
+                <div style="font-size:5rem;">📦</div>
+                <p>Legendary Pack</p>
+                <button class="btn" onclick="shop.buy()">Buy for 200G</button>
+            </div>
+            <div id="shop-reveal-area" style="margin-top:30px; display:flex; justify-content:center;"></div>
+            <button class="btn btn-end" style="margin:50px;" onclick="ui.showMenu()">Back to Menu</button>
+        </section>
+    </div>
+
+    <div id="modal-detail" class="modal-overlay">
+        <div class="modal-content">
+            <div id="detail-content"></div>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
+                <button class="btn" id="btn-detail-summon" onclick="game.confirmSummon()">SUMMON</button>
+                <button class="btn btn-end" onclick="ui.closeDetail()">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-summon" class="modal-overlay">
+        <div class="modal-content">
+            <div style="text-align:center; font-family:'Cinzel'; margin-bottom:10px; color:gold;">Select Creature</div>
+            <div class="col-grid" id="summon-grid"></div>
+            <button class="btn btn-end" style="width:100%; margin-top:15px;" onclick="document.getElementById('modal-summon').style.display='none'">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-confirm" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-family:'Cinzel'; font-size:1.2rem; margin-bottom:20px; color:var(--accent-red);">Direct Attack?</div>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button class="btn btn-end" onclick="game.executeDirectAttack()">ATTACK</button>
+                <button class="btn" onclick="document.getElementById('modal-confirm').style.display='none'">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-help" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-family:'Cinzel'; font-size:1.5rem; color:gold; margin-bottom:15px;">How to Play</div>
+            <ul class="help-list">
+                <li><strong>Goal:</strong> Reduce Enemy LP to 0.</li>
+                <li><strong>Combat:</strong> Tap your monster, then tap a target.</li>
+                <li><strong>Sacrifices:</strong> Lvl 5+ need 1 tribute. Lvl 7+ need 2.</li>
+                <li><strong>Elements (2x Damage):</strong>
+                    <br>🔥 Fire beats 🌿 Nature
+                    <br>🌿 Nature beats 💧 Water
+                    <br>💧 Water beats 🔥 Fire
+                </li>
+            </ul>
+            <button class="btn" onclick="document.getElementById('modal-help').style.display='none'">Got it</button>
+        </div>
+    </div>
+
+    <div id="modal-gameover" class="modal-overlay">
+        <div class="result-title" id="go-title">VICTORY</div>
+        <div style="border:1px solid #555; padding:20px; border-radius:10px; background:rgba(255,255,255,0.05); margin-bottom:30px;">
+            <div style="font-size:0.8rem; color:#aaa;">REWARD</div>
+            <div style="font-size:1.5rem; font-weight:bold; color:gold;" id="go-reward">+300 Gold</div>
+        </div>
+        <button class="btn" onclick="game.startBattle()">Next Battle</button>
+        <button class="btn btn-end" style="margin-top:10px;" onclick="ui.showMenu()">Main Menu</button>
+    </div>
+
+    <script>
+        const DB = [
+            { id: 4, name: "Skeleton Warrior", lvl: 2, atk: 1200, hp: 1000, img: "skeleton.jpg", el: "fire", desc: "A restless soldier raised from the grave." },
+            { id: 8, name: "Swamp Hydra", lvl: 3, atk: 1600, hp: 1600, img: "hydra.jpg", el: "water", desc: "A multi-headed terror lurking in the murky waters." },
+            { id: 3, name: "Forest Guardian", lvl: 4, atk: 1400, hp: 2000, img: "guardian.jpg", el: "nature", desc: "A silent protector of the ancient woods." },
+            { id: 5, name: "Royal Griffin", lvl: 4, atk: 1900, hp: 1500, img: "griffin.jpg", el: "nature", desc: "Majestic predator of the skies." },
+            { id: 12, name: "Banshee", lvl: 3, atk: 1300, hp: 1100, img: "banshee.jpg", el: "water", desc: "Her wail freezes the blood of the living." },
+            { id: 13, name: "Minotaur", lvl: 4, atk: 1800, hp: 1700, img: "minotaur.jpg", el: "fire", desc: "A savage beast confined to the labyrinth." },
+            { id: 2, name: "Frost Giant", lvl: 5, atk: 2100, hp: 2400, img: "giant.jpg", el: "water", desc: "A titan from the frozen wastes." },
+            { id: 7, name: "Solar Phoenix", lvl: 6, atk: 2300, hp: 1800, img: "phoenix.jpg", el: "fire", desc: "Born of the sun itself, rising from ash." },
+            { id: 9, name: "Cerberus", lvl: 5, atk: 2200, hp: 1900, img: "cerberus.jpg", el: "fire", desc: "The three-headed hound of the underworld." },
+            { id: 11, name: "Rock Golem", lvl: 5, atk: 1000, hp: 3000, img: "golem.jpg", el: "nature", desc: "Animated stone that feels no pain." },
+            { id: 14, name: "Valkyrie", lvl: 6, atk: 2400, hp: 2000, img: "valkyrie.jpg", el: "nature", desc: "A warrior maiden of fate." },
+            { id: 1, name: "Infernal Dragon", lvl: 8, atk: 3000, hp: 2500, img: "dragon.jpg", el: "fire", desc: "The apex predator of legends." },
+            { id: 6, name: "Deep Sea Kraken", lvl: 7, atk: 2600, hp: 2600, img: "kraken.jpg", el: "water", desc: "A monster that drags ships to the deep." },
+            { id: 10, name: "Chimera", lvl: 7, atk: 2700, hp: 2400, img: "chimera.jpg", el: "fire", desc: "Lion, goat, and snake fused into chaos." },
+            { id: 15, name: "Leviathan", lvl: 8, atk: 2900, hp: 2800, img: "leviathan.jpg", el: "water", desc: "Ruler of the ocean abyss." },
+            { id: 16, name: "Elder Lich", lvl: 7, atk: 2500, hp: 2100, img: "lich.jpg", el: "nature", desc: "A master of necrotic arts." }
+        ];
+
+        const game = {
+            data: {
+                gold: 500, turn: 'player', pLP: 4000, eLP: 4000,
+                pField: [null, null, null], eField: [null, null, null],
+                collection: [4, 8, 3, 5], selectedIdx: null, canSummon: true,
+                tributeMode: false, tributeTargetCount: 0, tributesSelected: [],
+                pendingSummonId: null, pendingDirectIdx: null, detailId: null
+            },
+            init: function() {
+                if(localStorage.getItem('mythos_final_v7')) {
+                    const s = JSON.parse(localStorage.getItem('mythos_final_v7'));
+                    this.data.collection = s.collection; this.data.gold = s.gold;
+                }
+                this.updateGoldUI();
+            },
+            save: function() {
+                localStorage.setItem('mythos_final_v7', JSON.stringify({collection:this.data.collection, gold:this.data.gold}));
+                this.updateGoldUI();
+            },
+            updateGoldUI: function() { document.getElementById('gold-display').innerText = this.data.gold; },
+            
+            startBattle: function() {
+                this.data.pLP=4000; this.data.eLP=4000;
+                this.data.pField=[null,null,null]; this.data.eField=[null,null,null];
+                this.data.turn='player'; this.data.canSummon=true; this.data.selectedIdx=null;
+                this.data.tributeMode=false;
+                document.getElementById('modal-gameover').style.display='none';
+                document.getElementById('main-menu').style.display='none';
+                document.getElementById('gold-badge').style.display = 'none';
+                ui.goToView('arena', true);
+                this.render();
+            },
+
+            getElemIcon: function(t) {
+                if(t==='fire') return '🔥'; if(t==='water') return '💧'; if(t==='nature') return '🌿'; return '';
+            },
+
+            render: function() {
+                const d = this.data;
+                document.getElementById('lp-player').innerText = d.pLP;
+                document.getElementById('lp-enemy').innerText = d.eLP;
+                
+                // Highlight active turn
+                document.getElementById('board-player').className = `lp-scoreboard ${d.turn==='player'?'active-turn':''}`;
+                document.getElementById('board-enemy').className = `lp-scoreboard ${d.turn==='enemy'?'active-turn':''}`;
+
+                document.getElementById('row-player').innerHTML = d.pField.map((c,i)=>this.cardHTML(c,i,true)).join('');
+                document.getElementById('row-enemy').innerHTML = d.eField.map((c,i)=>this.cardHTML(c,i,false)).join('');
+                const isP = d.turn === 'player';
+                document.getElementById('btn-summon').disabled = !(isP && d.canSummon); 
+                document.getElementById('btn-end').disabled = !(isP && !d.tributeMode);
+            },
+
+            cardHTML: function(card, idx, isPlayer) {
+                if(!card) return `<div class="card-slot"></div>`;
+                let cls = "card"; let action = "";
+                if(isPlayer) {
+                    if(this.data.tributeMode) {
+                        if(!this.data.tributesSelected.includes(idx)) cls += " tribute-target"; else cls += " selected";
+                        action = `onclick="game.clickPlayerCard(${idx})"`;
+                    } else {
+                        if(this.data.turn === 'player' && !card.hasAttacked && card.hp > 0) cls += " can-attack";
+                        if(this.data.selectedIdx === idx) cls += " selected";
+                        if(card.hp <= 0) cls += " dead";
+                        action = `onclick="game.clickPlayerCard(${idx})"`;
+                    }
+                } else {
+                    if(this.data.selectedIdx !== null && card.hp > 0) { cls += " targetable"; action = `onclick="game.clickEnemyCard(${idx})"`; }
+                    if(card.hp <= 0) cls += " dead";
+                }
+                return `<div class="card-slot"><div class="${cls}" ${action}><div class="elem-icon">${this.getElemIcon(card.el)}</div><img src="${card.img}" class="card-img" onerror="this.style.background='#222'"><div class="card-info"><div class="c-name">${card.name}</div><div class="c-lvl">★ ${card.lvl}</div><div class="stat-bar"><span class="atk">⚔${card.atk}</span><span class="hp">♥${card.hp}</span></div></div></div></div>`;
+            },
+
+            // --- SUMMON ---
+            openSummon: function() {
+                if(this.data.tributeMode) return ui.fxDamage("Select Tributes", document.getElementById('board-player'), "", "#fff");
+                const grid = document.getElementById('summon-grid'); grid.innerHTML = '';
+                [...new Set(this.data.collection)].forEach(id => {
+                    const c = DB.find(x => x.id === id);
+                    if(c) grid.innerHTML += `
+                        <div onclick="ui.showDetail(${id}, 'summon')" style="cursor:pointer">
+                            <div class="card" style="height:120px; pointer-events:none;">
+                                <div class="elem-icon" style="font-size:1rem;">${this.getElemIcon(c.el)}</div>
+                                <img src="${c.img}" class="card-img">
+                                <div class="card-info"><div class="c-name">${c.name}</div><div class="stat-bar"><span class="atk">${c.atk}</span><span class="hp">${c.hp}</span></div></div>
+                            </div>
+                        </div>`;
+                });
+                document.getElementById('modal-summon').style.display = 'flex';
+            },
+
+            confirmSummon: function() {
+                const id = this.data.detailId; ui.closeDetail();
+                const card = DB.find(x => x.id === id);
+                let req = 0; if(card.lvl >= 5) req = 1; if(card.lvl >= 7) req = 2;
+                const count = this.data.pField.filter(c => c !== null).length;
+                if(req === 0) {
+                    if(count >= 3) return ui.fxDamage("FULL!", document.getElementById('board-player'), "No Space", "#fff");
+                    this.finalizeSummon(card, []);
+                } else {
+                    if(count < req) return ui.fxDamage("NEED " + req, document.getElementById('board-player'), "Tributes", "#fff");
+                    this.data.tributeMode = true; this.data.tributeTargetCount = req;
+                    this.data.tributesSelected = []; this.data.pendingSummonId = id;
+                    document.getElementById('modal-summon').style.display = 'none';
+                    ui.fxDamage("SELECT " + req, document.getElementById('board-player'), "To Sacrifice", "gold");
+                    this.render();
+                }
+            },
+
+            clickPlayerCard: function(idx) {
+                if(this.data.tributeMode) {
+                    if(this.data.pField[idx] === null) return;
+                    if(this.data.tributesSelected.includes(idx)) this.data.tributesSelected = this.data.tributesSelected.filter(i => i !== idx);
+                    else if(this.data.tributesSelected.length < this.data.tributeTargetCount) this.data.tributesSelected.push(idx);
+                    if(this.data.tributesSelected.length === this.data.tributeTargetCount) this.finalizeSummon(DB.find(x=>x.id===this.data.pendingSummonId), this.data.tributesSelected);
+                    else this.render();
+                    return;
+                }
+                if(this.data.turn !== 'player') return;
+                const card = this.data.pField[idx];
+                if(!card || card.hasAttacked || card.hp <= 0) return;
+                if(this.data.selectedIdx === idx) this.data.selectedIdx = null;
+                else {
+                    this.data.selectedIdx = idx;
+                    const enemiesAlive = this.data.eField.some(c => c && c.hp > 0);
+                    if(!enemiesAlive) {
+                        this.data.pendingDirectIdx = idx;
+                        document.getElementById('modal-confirm').style.display = 'flex';
+                    }
+                }
+                this.render();
+            },
+
+            executeDirectAttack: function() {
+                const idx = this.data.pendingDirectIdx;
+                if(idx !== null) {
+                    const att = this.data.pField[idx];
+                    this.data.eLP -= att.atk;
+                    att.hasAttacked = true; this.data.selectedIdx = null;
+                    ui.fxDamage(att.atk, document.getElementById('board-enemy'), "DIRECT HIT", "#ff4757");
+                    this.checkWin();
+                }
+                document.getElementById('modal-confirm').style.display = 'none';
+                this.render();
+            },
+
+            finalizeSummon: function(card, tributes) {
+                tributes.forEach(idx => this.data.pField[idx] = null);
+                const slot = this.data.pField.findIndex(x => x === null);
+                this.data.pField[slot] = { ...card, hasAttacked: true };
+                this.data.canSummon = false; this.data.tributeMode = false;
+                this.data.tributesSelected = [];
+                document.getElementById('modal-summon').style.display = 'none';
+                this.render();
+            },
+
+            clickEnemyCard: function(idx) {
+                if(this.data.selectedIdx === null) return;
+                this.combatUnit(this.data.selectedIdx, idx, true);
+            },
+
+            combatUnit: function(attIdx, defIdx, isPlayerAttacking) {
+                const attArr = isPlayerAttacking ? this.data.pField : this.data.eField;
+                const defArr = isPlayerAttacking ? this.data.eField : this.data.pField;
+                const att = attArr[attIdx]; const def = defArr[defIdx];
+
+                let mult = 1.0; let msg = ""; let color = "#fff";
+                
+                if(att.el === 'fire' && def.el === 'nature') { mult = 2.0; msg="WEAKNESS! (2x DMG)"; color="#ff4757"; }
+                else if(att.el === 'nature' && def.el === 'water') { mult = 2.0; msg="WEAKNESS! (2x DMG)"; color="#ff4757"; }
+                else if(att.el === 'water' && def.el === 'fire') { mult = 2.0; msg="WEAKNESS! (2x DMG)"; color="#ff4757"; }
+                else if(att.el === 'nature' && def.el === 'fire') { mult = 0.5; msg="RESISTED (0.5x DMG)"; color="#aaa"; }
+                else if(att.el === 'water' && def.el === 'nature') { mult = 0.5; msg="RESISTED (0.5x DMG)"; color="#aaa"; }
+                else if(att.el === 'fire' && def.el === 'water') { mult = 0.5; msg="RESISTED (0.5x DMG)"; color="#aaa"; }
+
+                const dmg = Math.floor(att.atk * mult);
+                def.hp -= dmg;
+                ui.fxDamage(dmg, document.getElementById((isPlayerAttacking?'e-':'p-')+defIdx), msg, color);
+                
+                if(def.hp <= 0) {
+                    setTimeout(() => { defArr[defIdx] = null; this.render(); }, 400);
+                } else {
+                    setTimeout(() => {
+                        att.hp -= def.atk;
+                        ui.fxDamage(def.atk, document.getElementById((isPlayerAttacking?'p-':'e-')+attIdx));
+                        if(att.hp <= 0) {
+                            setTimeout(() => { attArr[attIdx] = null; this.render(); }, 400);
+                        }
+                        this.render();
+                    }, 1200);
+                }
+                if(isPlayerAttacking) {
+                    this.data.selectedIdx = null;
+                    if(att.hp > 0) att.hasAttacked = true;
+                }
+                this.render();
+                this.checkWin();
+            },
+
+            endTurn: function() {
+                this.data.turn = 'enemy'; this.data.selectedIdx = null;
+                this.render();
+                setTimeout(() => this.aiTurn(), 1000);
+            },
+
+            aiTurn: function() {
+                const empty = this.data.eField.findIndex(x => x === null);
+                if(empty !== -1) {
+                    const lowLvl = DB.filter(x => x.lvl <= 4);
+                    const card = lowLvl[Math.floor(Math.random()*lowLvl.length)];
+                    this.data.eField[empty] = { ...card, hasAttacked: true };
+                    this.render();
+                }
+                setTimeout(() => {
+                    const attackers = this.data.eField.map((c, i) => ({c, i})).filter(x => x.c && x.c.hp > 0 && !x.c.hasAttacked);
+                    if(attackers.length > 0) {
+                        const att = attackers[0];
+                        const targets = this.data.pField.map((c, i) => ({c, i})).filter(x => x.c && x.c.hp > 0);
+                        if(targets.length > 0) {
+                            const def = targets[Math.floor(Math.random()*targets.length)];
+                            this.combatUnit(att.i, def.i, false);
+                        } else {
+                            this.data.pLP -= att.c.atk;
+                            ui.fxDamage(att.c.atk, document.getElementById('board-player'), "DIRECT HIT", "#ff4757");
+                            this.checkWin();
+                            this.render();
+                        }
+                    }
+                    setTimeout(() => {
+                        this.data.turn = 'player'; this.data.canSummon = true;
+                        this.data.pField.forEach(c => { if(c) c.hasAttacked = false; });
+                        this.data.eField.forEach(c => { if(c) c.hasAttacked = false; });
+                        this.render();
+                    }, 1500);
+                }, 1000);
+            },
+            checkWin: function() {
+                if(this.data.eLP <= 0) this.gameOver(true);
+                else if(this.data.pLP <= 0) this.gameOver(false);
+            },
+            gameOver: function(isWin) {
+                const modal = document.getElementById('modal-gameover');
+                modal.style.display = 'flex';
+                document.getElementById('go-title').innerText = isWin ? "VICTORY" : "DEFEAT";
+                document.getElementById('go-reward').innerText = isWin ? "+300 Gold" : "+50 Gold";
+                this.data.gold += isWin ? 300 : 50;
+                this.save();
+            }
+        };
+
+        const ui = {
+            showMenu: function() {
+                document.getElementById('main-menu').style.display = 'flex';
+                document.getElementById('gold-badge').style.display = 'flex';
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.querySelectorAll('.modal-overlay').forEach(m => m.style.display='none');
+            },
+            goToView: function(view, isBattle = false) {
+                if(isBattle) { } else {
+                    document.getElementById('main-menu').style.display = 'none';
+                    document.getElementById('gold-badge').style.display = 'flex';
+                }
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById('view-'+view).classList.add('active');
+                if(view === 'collection') this.renderCol();
+            },
+            openHelp: function() { document.getElementById('modal-help').style.display = 'flex'; },
+            
+            startFullscreen: function() {
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) { elem.requestFullscreen(); } 
+                else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } 
+            },
+
+            fxDamage: function(n, el, msg="", color="#fff") {
+                if(!el) return;
+                const r = el.getBoundingClientRect();
+                const d = document.createElement('div'); d.className = 'dmg-float'; 
+                
+                let html = `<div class="dmg-val" style="color:${color}">-${n}</div>`;
+                if(msg) html += `<div class="dmg-text" style="color:${color}; border-color:${color}">${msg}</div>`;
+                d.innerHTML = html;
+
+                d.style.top = (r.top - 50) + "px"; 
+                d.style.left = (r.left + 20) + "px";
+                
+                document.body.appendChild(d); 
+                setTimeout(()=>d.remove(), 2500);
+            },
+            renderCol: function() {
+                const d = document.getElementById('collection-content'); d.innerHTML = '';
+                DB.forEach(c => {
+                    const ct = game.data.collection.filter(x => x === c.id).length;
+                    d.innerHTML += `<div class="col-card ${ct>0?'owned':''}" onclick="ui.showDetail(${c.id}, 'collection')"><div class="elem-icon" style="font-size:1rem; top:2px; right:2px;">${game.getElemIcon(c.el)}</div><img src="${c.img}">${ct>0 ? `<div class="col-qty">${ct}</div>` : ''}</div>`;
+                });
+            },
+            showDetail: function(id, mode) {
+                const c = DB.find(x => x.id === id);
+                game.data.detailId = id;
+                document.getElementById('detail-content').innerHTML = `
+                    <div style="font-size:3rem; margin-bottom:10px;">${game.getElemIcon(c.el)}</div>
+                    <img src="${c.img}" class="detail-img">
+                    <div class="detail-title">${c.name}</div>
+                    <div style="color:gold; margin-bottom:10px;">Level ${c.lvl}</div>
+                    <div class="detail-stats">
+                        <span style="color:#ff6b6b">⚔ ${c.atk}</span>
+                        <span style="color:#2ecc71">♥ ${c.hp}</span>
+                    </div>
+                    <div class="detail-desc">${c.desc}</div>
+                `;
+                document.getElementById('btn-detail-summon').style.display = (mode === 'summon') ? 'block' : 'none';
+                document.getElementById('modal-detail').style.display = 'flex';
+            },
+            closeDetail: function() { document.getElementById('modal-detail').style.display = 'none'; }
+        };
+
+        const shop = {
+            buy: function() {
+                if(game.data.gold < 200) return ui.fxDamage("Too Poor", document.getElementById('gold-badge'), "Need 200G", "#aaa");
+                game.data.gold -= 200;
+                const rnd = DB[Math.floor(Math.random()*DB.length)];
+                game.data.collection.push(rnd.id);
+                game.save();
+                document.getElementById('shop-reveal-area').innerHTML = `
+                    <div class="card" style="width:140px; height:200px; box-shadow:0 0 30px gold; animation: spawn 0.5s;">
+                        <div class="elem-icon">${game.getElemIcon(rnd.el)}</div>
+                        <img src="${rnd.img}" class="card-img">
+                        <div class="card-info" style="text-align:center;">
+                            <div class="c-name" style="font-size:0.9rem;">${rnd.name}</div>
+                            <div class="c-lvl" style="color:gold">★ ${rnd.lvl}</div>
+                        </div>
+                    </div>`;
+            }
+        };
+
+        game.init();
+    </script>
+</body>
+</html>

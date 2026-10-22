@@ -61,6 +61,41 @@
         .view { display: none; height: 100%; overflow-y: auto; padding-top: 20px; padding-bottom: 180px; flex-direction: column; align-items: center; }
         .view.active { display: flex; }
 
+/* --- BATTLE SCREEN FIT --- */
+
+#view-arena {
+    height: calc(100vh - 80px);
+    padding: 10px 0;
+    overflow: hidden;
+    justify-content: space-between;
+}
+
+#view-arena .lp-scoreboard {
+    margin: 4px 0;
+    padding: 6px 15px;
+}
+
+#view-arena .lp-val {
+    font-size: 1.5rem;
+}
+
+#view-arena .field-zone {
+    margin-bottom: 4px;
+    padding: 6px;
+}
+
+#view-arena .zone-title {
+    margin-bottom: 3px;
+}
+
+#view-arena .card-row {
+    max-height: 30vh;
+}
+
+#view-arena .card-slot {
+    max-height: 230px;
+}
+
         /* --- SCOREBOARDS --- */
         .lp-scoreboard {
             width: 95%; max-width: 450px;
@@ -146,6 +181,7 @@
         #modal-summon { z-index: 4100; } 
         #modal-detail { z-index: 4200; } 
         #modal-gameover { z-index: 5000; }
+#modal-help { z-index: 5100; }
 
         .col-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; padding: 10px; }
         .col-card { opacity: 0.5; position: relative; cursor: pointer; }
@@ -337,25 +373,78 @@
             { id: 16, name: "Elder Lich", lvl: 7, atk: 2500, hp: 2100, img: "lich.jpg", el: "nature", desc: "A master of necrotic arts." }
         ];
 
-        const game = {
-            data: {
-                gold: 500, turn: 'player', pLP: 4000, eLP: 4000,
-                pField: [null, null, null], eField: [null, null, null],
-                collection: [4, 8, 3, 5], selectedIdx: null, canSummon: true,
-                tributeMode: false, tributeTargetCount: 0, tributesSelected: [],
-                pendingSummonId: null, pendingDirectIdx: null, detailId: null
-            },
-            init: function() {
-                if(localStorage.getItem('mythos_final_v7')) {
-                    const s = JSON.parse(localStorage.getItem('mythos_final_v7'));
-                    this.data.collection = s.collection; this.data.gold = s.gold;
-                }
-                this.updateGoldUI();
-            },
+const SAVE_VERSION = 2;
+const SAVE_KEY = 'mythos_save';
+
+      const game = {
+    data: {
+        gold: 500,
+        wins: 0,
+        losses: 0,
+        packsOpened: 0,
+        totalGoldEarned: 0,
+
+        turn: 'player',
+        pLP: 4000,
+        eLP: 4000,
+        pField: [null, null, null],
+        eField: [null, null, null],
+        collection: [4, 8, 3, 5],
+        selectedIdx: null,
+        canSummon: true,
+        tributeMode: false,
+        tributeTargetCount: 0,
+        tributesSelected: [],
+        pendingSummonId: null,
+        pendingDirectIdx: null,
+        detailId: null
+    },            init: function() {
+    const newSave = localStorage.getItem(SAVE_KEY);
+    const oldSave = localStorage.getItem('mythos_final_v7');
+
+    if (newSave) {
+        const s = JSON.parse(newSave);
+
+        this.data.collection = s.collection ?? this.data.collection;
+        this.data.gold = s.gold ?? this.data.gold;
+        this.data.wins = s.wins ?? 0;
+        this.data.losses = s.losses ?? 0;
+        this.data.packsOpened = s.packsOpened ?? 0;
+        this.data.totalGoldEarned = s.totalGoldEarned ?? 0;
+
+    } else if (oldSave) {
+        const s = JSON.parse(oldSave);
+
+        this.data.collection = s.collection ?? this.data.collection;
+        this.data.gold = s.gold ?? this.data.gold;
+
+        this.data.wins = 0;
+        this.data.losses = 0;
+        this.data.packsOpened = 0;
+        this.data.totalGoldEarned = 0;
+
+        this.save();
+    }
+
+    this.updateGoldUI();
+},
+
             save: function() {
-                localStorage.setItem('mythos_final_v7', JSON.stringify({collection:this.data.collection, gold:this.data.gold}));
-                this.updateGoldUI();
-            },
+    const saveData = {
+        version: SAVE_VERSION,
+        collection: this.data.collection,
+        gold: this.data.gold,
+        wins: this.data.wins,
+        losses: this.data.losses,
+        packsOpened: this.data.packsOpened,
+        totalGoldEarned: this.data.totalGoldEarned
+    };
+
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+
+    this.updateGoldUI();
+},
+            
             updateGoldUI: function() { document.getElementById('gold-display').innerText = this.data.gold; },
             
             startBattle: function() {
@@ -578,13 +667,28 @@
                 else if(this.data.pLP <= 0) this.gameOver(false);
             },
             gameOver: function(isWin) {
-                const modal = document.getElementById('modal-gameover');
-                modal.style.display = 'flex';
-                document.getElementById('go-title').innerText = isWin ? "VICTORY" : "DEFEAT";
-                document.getElementById('go-reward').innerText = isWin ? "+300 Gold" : "+50 Gold";
-                this.data.gold += isWin ? 300 : 50;
-                this.save();
-            }
+    const modal = document.getElementById('modal-gameover');
+
+    modal.style.display = 'flex';
+
+    document.getElementById('go-title').innerText =
+        isWin ? "VICTORY" : "DEFEAT";
+
+    document.getElementById('go-reward').innerText =
+        isWin ? "+300 Gold" : "+50 Gold";
+
+    if (isWin) {
+        this.data.wins++;
+        this.data.gold += 300;
+        this.data.totalGoldEarned += 300;
+    } else {
+        this.data.losses++;
+        this.data.gold += 50;
+        this.data.totalGoldEarned += 50;
+    }
+
+    this.save();
+}
         };
 
         const ui = {
@@ -603,13 +707,21 @@
                 document.getElementById('view-'+view).classList.add('active');
                 if(view === 'collection') this.renderCol();
             },
-            openHelp: function() { document.getElementById('modal-help').style.display = 'flex'; },
-            
-            startFullscreen: function() {
-                const elem = document.documentElement;
-                if (elem.requestFullscreen) { elem.requestFullscreen(); } 
-                else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } 
-            },
+            openHelp: function() {
+    document.getElementById('modal-help').style.display = 'flex';
+},
+
+startFullscreen: function() {
+    const elem = document.documentElement;
+
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+    }
+},
+
+
 
             fxDamage: function(n, el, msg="", color="#fff") {
                 if(!el) return;
@@ -657,6 +769,7 @@
             buy: function() {
                 if(game.data.gold < 200) return ui.fxDamage("Too Poor", document.getElementById('gold-badge'), "Need 200G", "#aaa");
                 game.data.gold -= 200;
+game.data.packsOpened++;
                 const rnd = DB[Math.floor(Math.random()*DB.length)];
                 game.data.collection.push(rnd.id);
                 game.save();
